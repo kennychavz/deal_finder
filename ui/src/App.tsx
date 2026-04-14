@@ -229,23 +229,24 @@ function App() {
   const showStep1 = phase === 'searching' || phase === 'analyzing' || phase === 'done'
   const showStep2 = phase === 'analyzing' || phase === 'done'
 
-  // Live status text for the searching phase
   const searchingText = currentQuery && queryProgress
     ? `Searching "${currentQuery}" (${queryProgress.index + 1}/${queryProgress.total})`
     : 'Starting scan...'
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto flex flex-col">
-      {/* Header */}
-      <div className="flex flex-col gap-0.5 mb-6">
+      {/* Header - centered */}
+      <div className="flex flex-col items-center gap-1 mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-primary" style={{ boxShadow: '0 0 8px hsl(217 91% 60%)' }} />
-          <h1 className="text-xl font-bold tracking-tight">discomfrt</h1>
+          <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <span className="text-primary font-bold text-sm">D</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">discomfrt</h1>
         </div>
-        <p className="text-xs text-muted-foreground ml-6">Comfrt Infringement Detector</p>
+        <p className="text-xs text-muted-foreground">Comfrt Infringement Detector</p>
       </div>
 
-      {/* ─── Scan Node ─── */}
+      {/* Scan Node - centered */}
       <div className="flex flex-col items-center">
         <div className="w-full max-w-lg backdrop-blur-xl rounded-xl p-5 border shadow-2xl bg-card/80 border-border/30 flex flex-col items-center gap-4">
           <p className="text-sm text-muted-foreground text-center">
@@ -284,19 +285,17 @@ function App() {
             </button>
           </div>
 
-          {/* Live status while searching */}
           {phase === 'searching' && (
             <p className="text-xs text-muted-foreground animate-pulse">{searchingText}</p>
           )}
 
-          {/* Error */}
           {phase === 'error' && error && (
             <p className="text-xs text-neg">{error}</p>
           )}
         </div>
       </div>
 
-      {/* ─── Reference Node ─── */}
+      {/* Reference Node */}
       {sourceProduct && (
         <>
           <NodeConnector />
@@ -304,7 +303,7 @@ function App() {
         </>
       )}
 
-      {/* ─── Search Results Node ─── */}
+      {/* Search Results Node */}
       {showStep1 && (
         <>
           <NodeConnector />
@@ -335,7 +334,7 @@ function App() {
         </>
       )}
 
-      {/* ─── Analysis Node ─── */}
+      {/* Analysis Node */}
       {showStep2 && (
         <>
           <NodeConnector />
@@ -345,7 +344,7 @@ function App() {
               {phase === 'analyzing' && (
                 <>
                   <span className="text-sm text-muted-foreground">
-                    {scoredResults.length} scored
+                    {scoredResults.length}/{allRaw.length} scored
                   </span>
                   <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
                 </>

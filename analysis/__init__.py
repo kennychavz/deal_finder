@@ -1,3 +1,3 @@
-from .engine import analyze, ScoringEngine
+from .engine import analyze, analyze_stream, ScoringEngine
 
-__all__ = ["analyze", "ScoringEngine"]
+__all__ = ["analyze", "analyze_stream", "ScoringEngine"]

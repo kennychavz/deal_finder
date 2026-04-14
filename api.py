@@ -36,7 +36,7 @@ from pydantic import BaseModel
 
 from scrapers.amazon_scraper import search_amazon
 from scrapers.ebay_scraper import search_ebay
-from analysis import analyze
+from analysis import analyze_stream
 from reference_set import SEARCH_QUERIES, get_reference_source
 from budget import RequestBudget
 
@@ -212,17 +212,13 @@ async def _search_stream(max_results: int):
             **budget.summary(),
         })
 
-    # ── Phase 2: Score all candidates (progressive) ──
+    # ── Phase 2: Score candidates, stream as each completes ──
     yield _sse("phase", {"phase": "analyzing"})
 
     if all_candidates:
         try:
-            scored = await analyze(source, all_candidates)
-
-            # Merge and sort by score desc, then stream one at a time
-            merged = []
-            for candidate, analysis_result in zip(all_candidates, scored):
-                merged.append({
+            async for candidate, analysis_result in analyze_stream(source, all_candidates):
+                merged = {
                     **candidate,
                     "similarity_score": analysis_result["overall_score"],
                     "score_breakdown": {
@@ -230,11 +226,8 @@ async def _search_stream(max_results: int):
                         "reasoning": analysis_result["reasoning"],
                         **analysis_result["signals"],
                     },
-                })
-
-            merged.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
-            for item in merged:
-                yield _sse("scored_result", item)
+                }
+                yield _sse("scored_result", merged)
 
         except Exception as e:
             log.error("Scoring failed: %s\n%s", e, traceback.format_exc())

@@ -79,14 +79,21 @@ export function ResultCard({ result, expanded, onToggle }: Props) {
           </div>
         </div>
 
-        {/* Image on right */}
-        <div className="w-12 h-12 rounded-lg bg-secondary/50 border border-border/20 overflow-hidden shrink-0 flex items-center justify-center">
+        {/* Image on right - clickable to listing */}
+        <a
+          href={r.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="w-12 h-12 rounded-lg bg-secondary/50 border border-border/20 overflow-hidden shrink-0 flex items-center justify-center hover:border-primary/40 transition-colors"
+          title="View listing"
+        >
           {r.image_url ? (
             <img src={r.image_url} alt="" className="w-full h-full object-contain" loading="lazy" />
           ) : (
             <span className="text-[10px] text-muted-foreground">No img</span>
           )}
-        </div>
+        </a>
 
         <span className="text-xs text-muted-foreground shrink-0">
           {expanded ? '▲' : '▼'}

@@ -138,26 +138,31 @@ async def analyze(
     candidates: list[dict],
     concurrency: int = 10,
 ) -> list[dict]:
-    """Top-level entry point for the analysis package.
-
-    Args:
-        source: ProductInfo dict with title, brand, price, images, etc.
-        candidates: List of scraped result dicts with title, price, image_url, etc.
-        concurrency: Max parallel scoring tasks.
-
-    Returns:
-        list[dict] — one entry per candidate, same order as input.
-        Each entry:
-        {
-            "url": "https://...",
-            "overall_score": 0.82,
-            "reasoning": "Strong title match | Brand found | ...",
-            "signals": {
-                "title_similarity": {"score": 0.85, "weight": 0.3, "reason": "...", "raw": {...}},
-                "brand_match":      {"score": 0.0,  "weight": 0.2, "reason": "...", "raw": {...}},
-                ...
-            }
-        }
-    """
+    """Score all candidates, returns list in same order as input."""
     engine = ScoringEngine()
     return await engine.score_all(source, candidates, concurrency=concurrency)
+
+
+async def analyze_stream(
+    source: dict,
+    candidates: list[dict],
+    concurrency: int = 10,
+):
+    """Score candidates and yield (candidate, result) tuples as each completes.
+
+    Results arrive in completion order (not input order), so the caller
+    can stream them to the frontend immediately.
+    """
+    engine = ScoringEngine()
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _score(cand: dict) -> tuple[dict, dict]:
+        async with sem:
+            result = await engine.score_one(source, cand)
+            return cand, result
+
+    tasks = [asyncio.create_task(_score(c)) for c in candidates]
+
+    for coro in asyncio.as_completed(tasks):
+        candidate, result = await coro
+        yield candidate, result

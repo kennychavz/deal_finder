@@ -10,6 +10,7 @@ Uses the free tier: 15 RPM, 1M tokens/day.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -69,10 +70,14 @@ CANDIDATE LISTING:
 Assess infringement probability."""
 
 
+_LLM_SEMAPHORE = asyncio.Semaphore(2)  # max 2 concurrent LLM calls
+
+
 class LLMSimilaritySignal(BaseSignal):
     """Use Gemini 2.0 Flash to assess infringement probability.
 
     Requires GEMINI_API_KEY env var. Falls back gracefully if missing or rate-limited.
+    Rate limited to 2 concurrent requests to avoid 429s on free tier.
     """
 
     name = "llm_assessment"
@@ -92,6 +97,14 @@ class LLMSimilaritySignal(BaseSignal):
                 reason="LLM signal skipped — no API key",
             )
 
+        await _LLM_SEMAPHORE.acquire()
+        try:
+            return await self._call_llm(source, candidate)
+        finally:
+            _LLM_SEMAPHORE.release()
+            await asyncio.sleep(0.5)  # space out requests to avoid 429
+
+    async def _call_llm(self, source: dict, candidate: dict) -> SignalResult:
         prompt = _build_prompt(source, candidate)
         url = _GEMINI_URL.format(model=_GEMINI_MODEL)
 
@@ -110,17 +123,41 @@ class LLMSimilaritySignal(BaseSignal):
             },
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    url,
-                    params={"key": self._api_key},
-                    json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+        # Retry up to 3 times on 429 (rate limit) with increasing backoff
+        data = None
+        last_status = 0
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                    resp = await client.post(
+                        url,
+                        params={"key": self._api_key},
+                        json=payload,
+                    )
+                    last_status = resp.status_code
+                    if resp.status_code == 429:
+                        wait = 2 ** attempt * 2  # 2s, 4s, 8s
+                        log.debug("Gemini 429, retrying in %ds (attempt %d)", wait, attempt + 1)
+                        await asyncio.sleep(wait)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    break
+            except httpx.HTTPStatusError:
+                if last_status == 429:
+                    continue
+                raise
 
-            # Extract text from Gemini response
+        if data is None:
+            return SignalResult(
+                name=self.name,
+                score=0.5,
+                weight=self.default_weight,
+                raw={"error": f"Rate limited after 3 retries (HTTP {last_status})"},
+                reason="LLM signal failed, rate limited after retries",
+            )
+
+        try:
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             result = json.loads(text)
 
@@ -142,16 +179,6 @@ class LLMSimilaritySignal(BaseSignal):
                     "model": _GEMINI_MODEL,
                 },
                 reason=reasoning,
-            )
-
-        except httpx.HTTPStatusError as e:
-            log.warning("Gemini API error %s: %s", e.response.status_code, e.response.text[:200])
-            return SignalResult(
-                name=self.name,
-                score=0.5,
-                weight=self.default_weight,
-                raw={"error": f"HTTP {e.response.status_code}"},
-                reason=f"LLM signal failed — API error {e.response.status_code}",
             )
         except Exception as e:
             log.warning("Gemini signal failed: %s", e)
