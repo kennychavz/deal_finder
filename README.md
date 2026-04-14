@@ -110,7 +110,6 @@ deal_finder/
 │       ├── clip.py             # CLIP vision embeddings
 │       └── llm.py              # Gemini 2.0 Flash
 ├── scrapers/
-│   ├── product_extractor.py    # Multi-strategy product extraction
 │   ├── amazon_scraper.py       # Amazon search (ScraperAPI + Playwright)
 │   └── ebay_scraper.py         # eBay search (ScraperAPI + Playwright)
 ├── ui/                         # React frontend

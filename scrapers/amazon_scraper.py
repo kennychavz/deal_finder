@@ -9,6 +9,7 @@ import asyncio
 import argparse
 import json
 import logging
+import os
 import random
 import re
 import urllib.parse
@@ -20,7 +21,7 @@ from playwright_stealth import Stealth
 
 logger = logging.getLogger(__name__)
 
-SCRAPER_API_KEY = "***REDACTED***"
+SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "***REDACTED***")
 
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
