@@ -309,17 +309,17 @@ function App() {
         <>
           <NodeConnector />
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-base font-bold text-foreground">Search Results</h2>
-                <span className="text-sm font-mono text-muted-foreground">
+                <h2 className="text-xl font-bold text-foreground">Search Results</h2>
+                <span className="text-xs font-mono text-muted-foreground/70">
                   {allRaw.length} found
                 </span>
                 {phase === 'searching' && (
                   <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground/60">
                 Searching for matching products on Amazon and eBay using multiple query variations. Results are deduplicated by product ID.
               </p>
             </div>
@@ -342,19 +342,19 @@ function App() {
         <>
           <NodeConnector />
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-base font-bold text-foreground">Analysis</h2>
+                <h2 className="text-xl font-bold text-foreground">Analysis</h2>
                 {phase === 'analyzing' && (
                   <>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs text-muted-foreground/70">
                       {scoredResults.length}/{allRaw.length} scored
                     </span>
                     <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
                   </>
                 )}
                 {phase === 'done' && (
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs text-muted-foreground/70">
                     {scoredResults.length} results
                   </span>
                 )}
@@ -366,7 +366,7 @@ function App() {
                   ?
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground/60">
                 Each candidate is scored against 8 authentic Comfrt products using 6 independent signals. Higher score = more likely infringement.
               </p>
             </div>
