@@ -23,6 +23,9 @@ SSE events emitted in order:
 
 from __future__ import annotations
 
+from dotenv import load_dotenv
+load_dotenv()  # Load .env before any os.environ.get() calls
+
 import asyncio
 import json
 import logging

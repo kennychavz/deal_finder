@@ -2,6 +2,9 @@
 
 Compares candidate image against ALL source reference images and
 returns the best match score.
+
+Reference image hashes are pre-computed once per source and cached
+across all candidates to avoid redundant downloads and hashing.
 """
 
 from __future__ import annotations
@@ -17,6 +20,9 @@ log = logging.getLogger(__name__)
 
 # Max hamming distance for a 64-bit hash (8x8 image → 64 bits)
 _MAX_DISTANCE = 64
+
+# Cache reference hashes keyed by frozenset of image URLs
+_ref_hash_cache: dict[frozenset[str], list[tuple[str, object, object]]] = {}
 
 
 def _hash_distance_score(hash_a, hash_b) -> float:
@@ -38,6 +44,24 @@ class ImageHashSignal(BaseSignal):
 
     def __init__(self, hash_size: int = 8):
         self._hash_size = hash_size
+
+    async def _get_ref_hashes(self, image_urls: list[str]) -> list[tuple[str, object, object]]:
+        """Download and hash reference images, caching the result."""
+        cache_key = frozenset(image_urls)
+        if cache_key in _ref_hash_cache:
+            return _ref_hash_cache[cache_key]
+
+        hashes = []
+        for url in image_urls:
+            img = await download_image(url)
+            if img is None:
+                continue
+            ph = imagehash.phash(img, hash_size=self._hash_size)
+            dh = imagehash.dhash(img, hash_size=self._hash_size)
+            hashes.append((url, ph, dh))
+
+        _ref_hash_cache[cache_key] = hashes
+        return hashes
 
     async def compute(self, source: dict, candidate: dict) -> SignalResult:
         src_images = source.get("images", [])
@@ -65,33 +89,10 @@ class ImageHashSignal(BaseSignal):
         cand_phash = imagehash.phash(cand_img, hash_size=self._hash_size)
         cand_dhash = imagehash.dhash(cand_img, hash_size=self._hash_size)
 
-        # Compare against ALL reference images, keep the best match
-        best_score = 0.0
-        best_phash_dist = _MAX_DISTANCE
-        best_dhash_dist = _MAX_DISTANCE
-        best_ref_url = ""
-        refs_checked = 0
+        # Get pre-computed reference hashes (cached across candidates)
+        ref_hashes = await self._get_ref_hashes(src_images)
 
-        for src_url in src_images:
-            src_img = await download_image(src_url)
-            if src_img is None:
-                continue
-
-            refs_checked += 1
-            src_phash = imagehash.phash(src_img, hash_size=self._hash_size)
-            src_dhash = imagehash.dhash(src_img, hash_size=self._hash_size)
-
-            phash_score = _hash_distance_score(src_phash, cand_phash)
-            dhash_score = _hash_distance_score(src_dhash, cand_dhash)
-            match_score = max(phash_score, dhash_score)
-
-            if match_score > best_score:
-                best_score = match_score
-                best_phash_dist = src_phash - cand_phash
-                best_dhash_dist = src_dhash - cand_dhash
-                best_ref_url = src_url
-
-        if refs_checked == 0:
+        if not ref_hashes:
             return SignalResult(
                 name=self.name,
                 score=0.0,
@@ -100,6 +101,24 @@ class ImageHashSignal(BaseSignal):
                 reason="Image download failed (all reference images)",
             )
 
+        # Compare against all cached reference hashes, keep the best match
+        best_score = 0.0
+        best_phash_dist = _MAX_DISTANCE
+        best_dhash_dist = _MAX_DISTANCE
+        best_ref_url = ""
+
+        for ref_url, ref_phash, ref_dhash in ref_hashes:
+            phash_score = _hash_distance_score(ref_phash, cand_phash)
+            dhash_score = _hash_distance_score(ref_dhash, cand_dhash)
+            match_score = max(phash_score, dhash_score)
+
+            if match_score > best_score:
+                best_score = match_score
+                best_phash_dist = ref_phash - cand_phash
+                best_dhash_dist = ref_dhash - cand_dhash
+                best_ref_url = ref_url
+
+        refs_checked = len(ref_hashes)
         score = round(best_score, 4)
 
         if score >= 0.85:

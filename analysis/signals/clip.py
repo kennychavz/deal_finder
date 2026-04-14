@@ -4,6 +4,9 @@ Uses open_clip ViT-B-32 to compute cosine similarity between candidate
 and ALL source reference product images. Returns the best match.
 More robust than perceptual hashing for cases where products look similar
 but aren't pixel-identical.
+
+Reference image embeddings are pre-computed once per source and cached
+across all candidates to avoid redundant downloads and model inference.
 """
 
 from __future__ import annotations
@@ -19,6 +22,9 @@ from .base import BaseSignal, SignalResult
 from ._http import download_image
 
 log = logging.getLogger(__name__)
+
+# Cache reference embeddings keyed by frozenset of image URLs
+_ref_cache: dict[frozenset[str], list[tuple[str, np.ndarray]]] = {}
 
 
 @lru_cache(maxsize=1)
@@ -41,6 +47,27 @@ def _embed_image(img: Image.Image) -> np.ndarray:
         features = model.encode_image(tensor)
     features = features / features.norm(dim=-1, keepdim=True)
     return features.squeeze().cpu().numpy()
+
+
+async def _get_ref_embeddings(image_urls: list[str]) -> list[tuple[str, np.ndarray]]:
+    """Download and embed reference images, caching the result."""
+    cache_key = frozenset(image_urls)
+    if cache_key in _ref_cache:
+        return _ref_cache[cache_key]
+
+    embeddings = []
+    for url in image_urls:
+        img = await download_image(url)
+        if img is None:
+            continue
+        try:
+            emb = _embed_image(img)
+            embeddings.append((url, emb))
+        except Exception as e:
+            log.debug("CLIP embedding failed for ref %s: %s", url, e)
+
+    _ref_cache[cache_key] = embeddings
+    return embeddings
 
 
 class CLIPSimilaritySignal(BaseSignal):
@@ -90,30 +117,10 @@ class CLIPSimilaritySignal(BaseSignal):
                 reason="CLIP model error",
             )
 
-        # Compare against ALL reference images, keep the best match
-        best_cosine = -1.0
-        best_ref_url = ""
-        refs_checked = 0
+        # Get pre-computed reference embeddings (cached across candidates)
+        ref_embeddings = await _get_ref_embeddings(src_images)
 
-        for src_url in src_images:
-            src_img = await download_image(src_url)
-            if src_img is None:
-                continue
-
-            try:
-                src_emb = _embed_image(src_img)
-            except Exception as e:
-                log.debug("CLIP embedding failed for ref %s: %s", src_url, e)
-                continue
-
-            refs_checked += 1
-            cosine = float(np.dot(src_emb, cand_emb))
-
-            if cosine > best_cosine:
-                best_cosine = cosine
-                best_ref_url = src_url
-
-        if refs_checked == 0:
+        if not ref_embeddings:
             return SignalResult(
                 name=self.name,
                 score=0.0,
@@ -121,6 +128,18 @@ class CLIPSimilaritySignal(BaseSignal):
                 raw={"note": "failed to process any reference images"},
                 reason="CLIP: could not embed any reference images",
             )
+
+        # Compare against all cached reference embeddings
+        best_cosine = -1.0
+        best_ref_url = ""
+
+        for ref_url, ref_emb in ref_embeddings:
+            cosine = float(np.dot(ref_emb, cand_emb))
+            if cosine > best_cosine:
+                best_cosine = cosine
+                best_ref_url = ref_url
+
+        refs_checked = len(ref_embeddings)
 
         # Map cosine to score: CLIP cosine for same-product images is typically 0.7-0.95
         # Different products: 0.2-0.5. We rescale to make it more discriminative.

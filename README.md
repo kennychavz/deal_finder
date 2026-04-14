@@ -124,9 +124,10 @@ deal_finder/
 
 | Variable | Required | Description |
 |---|---|---|
+| `SCRAPER_API_KEY` | Yes | ScraperAPI key for Amazon/eBay search |
 | `GEMINI_API_KEY` | No | Enables LLM scoring signal. Without it, LLM signal defaults to neutral 0.5 |
 
-The ScraperAPI key is configured in the scraper modules.
+Create a `.env` file in the project root with these variables. The app loads it automatically via `python-dotenv`.
 
 ## Tradeoffs & Design Decisions
 

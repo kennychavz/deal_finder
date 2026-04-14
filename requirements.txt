@@ -11,3 +11,4 @@ Pillow
 numpy
 open_clip_torch
 torch
+python-dotenv
