@@ -64,18 +64,13 @@ export function ResultCard({ result, expanded, onToggle }: Props) {
               </span>
             )}
           </div>
-          <h3 className="text-sm text-foreground truncate">{r.title}</h3>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          <h3 className="text-xs text-foreground truncate max-w-[400px]">{r.title}</h3>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
             {r.price != null && (
-              <span className="font-mono font-bold text-foreground">${r.price.toFixed(2)}</span>
+              <span className="font-mono font-semibold text-foreground">${r.price.toFixed(2)}</span>
             )}
-            {r.condition && <span>{r.condition}</span>}
             {r.rating != null && <span>★ {r.rating.toFixed(1)}</span>}
-            {r.review_count != null && r.review_count > 0 && (
-              <span>({r.review_count.toLocaleString()})</span>
-            )}
             {r.prime && <span className="font-semibold">Prime</span>}
-            {r.shipping && <span>{r.shipping}</span>}
           </div>
         </div>
 

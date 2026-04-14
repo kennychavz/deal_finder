@@ -311,7 +311,7 @@ function App() {
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
             <div className="flex flex-col items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-foreground">Search Results</h2>
+                <h2 className="text-2xl font-bold text-foreground">Search Results</h2>
                 <span className="text-xs font-mono text-muted-foreground/70">
                   {allRaw.length} found
                 </span>
@@ -344,7 +344,7 @@ function App() {
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
             <div className="flex flex-col items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-foreground">Analysis</h2>
+                <h2 className="text-2xl font-bold text-foreground">Analysis</h2>
                 {phase === 'analyzing' && (
                   <>
                     <span className="text-xs text-muted-foreground/70">
