@@ -8,16 +8,15 @@ but aren't pixel-identical.
 
 from __future__ import annotations
 
-import io
 import logging
 from functools import lru_cache
 
-import httpx
 import numpy as np
 import torch
 from PIL import Image
 
 from .base import BaseSignal, SignalResult
+from ._http import download_image
 
 log = logging.getLogger(__name__)
 
@@ -32,19 +31,6 @@ def _load_model():
     )
     model.eval()
     return model, preprocess
-
-
-async def _download_image(url: str, timeout: float = 10.0) -> Image.Image | None:
-    if not url:
-        return None
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            return Image.open(io.BytesIO(resp.content)).convert("RGB")
-    except Exception as e:
-        log.debug("Failed to download image %s: %s", url, e)
-        return None
 
 
 def _embed_image(img: Image.Image) -> np.ndarray:
@@ -82,7 +68,7 @@ class CLIPSimilaritySignal(BaseSignal):
                 reason="Cannot compare — missing image",
             )
 
-        cand_img = await _download_image(cand_url)
+        cand_img = await download_image(cand_url)
         if cand_img is None:
             return SignalResult(
                 name=self.name,
@@ -110,7 +96,7 @@ class CLIPSimilaritySignal(BaseSignal):
         refs_checked = 0
 
         for src_url in src_images:
-            src_img = await _download_image(src_url)
+            src_img = await download_image(src_url)
             if src_img is None:
                 continue
 

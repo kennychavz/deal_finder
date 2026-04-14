@@ -107,7 +107,7 @@ class ScoringEngine:
         """Score all candidates against the source product.
 
         Args:
-            source: ProductInfo dict (from product_extractor.to_dict()).
+            source: Dict with title, brand, price, images, etc.
             candidates: List of scraped result dicts from Amazon/eBay.
             concurrency: Max parallel scoring tasks.
 
