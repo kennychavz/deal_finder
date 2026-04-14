@@ -1,0 +1,10 @@
+playwright
+beautifulsoup4
+lxml
+imagehash
+Pillow
+httpx
+open_clip_torch
+torch
+fastapi
+uvicorn[standard]
