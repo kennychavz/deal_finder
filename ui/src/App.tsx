@@ -242,7 +242,7 @@ function App() {
           <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
             <span className="text-primary font-bold text-sm">D</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">discomfrt</h1>
+          <h1 className="text-4xl font-bold tracking-tight">discomfrt</h1>
         </div>
         <p className="text-xs text-muted-foreground">Comfrt Infringement Detector</p>
       </div>
