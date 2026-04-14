@@ -52,6 +52,7 @@ function App() {
   })
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showSignalInfo, setShowSignalInfo] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const handleSearch = useCallback(async () => {
@@ -308,18 +309,20 @@ function App() {
         <>
           <NodeConnector />
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-base font-bold text-foreground">Search Results</h2>
-              <span className="text-sm font-mono text-muted-foreground">
-                {allRaw.length} found
-              </span>
-              {phase === 'searching' && (
-                <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-              )}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-3">
+                <h2 className="text-base font-bold text-foreground">Search Results</h2>
+                <span className="text-sm font-mono text-muted-foreground">
+                  {allRaw.length} found
+                </span>
+                {phase === 'searching' && (
+                  <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Searching for matching products on Amazon and eBay using multiple query variations. Results are deduplicated by product ID.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">
-              Searching for matching products on Amazon and eBay using multiple query variations. Results are deduplicated by product ID.
-            </p>
 
             <SearchLane marketplace="amazon" results={amazonResults} status={phase === 'searching' ? 'searching' : 'done'} />
             <SearchLane marketplace="ebay" results={ebayResults} status={phase === 'searching' ? 'searching' : 'done'} />
@@ -339,35 +342,76 @@ function App() {
         <>
           <NodeConnector />
           <div className="backdrop-blur-xl rounded-xl border shadow-2xl bg-card/80 border-border/30 p-4 flex flex-col gap-3">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-base font-bold text-foreground">Analysis</h2>
-              {phase === 'analyzing' && (
-                <>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-3">
+                <h2 className="text-base font-bold text-foreground">Analysis</h2>
+                {phase === 'analyzing' && (
+                  <>
+                    <span className="text-sm text-muted-foreground">
+                      {scoredResults.length}/{allRaw.length} scored
+                    </span>
+                    <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                  </>
+                )}
+                {phase === 'done' && (
                   <span className="text-sm text-muted-foreground">
-                    {scoredResults.length}/{allRaw.length} scored
+                    {scoredResults.length} results
                   </span>
-                  <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                </>
-              )}
-              {phase === 'done' && (
-                <span className="text-sm text-muted-foreground">
-                  {scoredResults.length} results
-                </span>
-              )}
+                )}
+                <button
+                  onClick={() => setShowSignalInfo(prev => !prev)}
+                  className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-bold hover:bg-primary/25 transition-colors"
+                  title="How scoring works"
+                >
+                  ?
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Each candidate is scored against 8 authentic Comfrt products using 6 independent signals. Higher score = more likely infringement.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">
-              Each candidate is scored against 8 authentic Comfrt products using 6 independent signals. Higher score = more likely infringement.
-            </p>
 
-            {/* Signal legend */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground/70 pb-1 border-b border-border/10">
-              <span><span className="font-semibold text-muted-foreground">Title</span> TF-IDF + brand name match</span>
-              <span><span className="font-semibold text-muted-foreground">Brand</span> Fuzzy Levenshtein</span>
-              <span><span className="font-semibold text-muted-foreground">Image</span> Perceptual hash (pHash/dHash)</span>
-              <span><span className="font-semibold text-muted-foreground">Price</span> Suspiciously cheap detection</span>
-              <span><span className="font-semibold text-muted-foreground">CLIP</span> Vision embedding similarity</span>
-              <span><span className="font-semibold text-muted-foreground">LLM</span> Gemini 2.0 Flash assessment</span>
-            </div>
+            {/* Signal info panel */}
+            {showSignalInfo && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground">How Scoring Works</span>
+                  <button onClick={() => setShowSignalInfo(false)} className="text-muted-foreground hover:text-foreground text-xs">close</button>
+                </div>
+                <div className="flex flex-col gap-2 text-muted-foreground">
+                  <div>
+                    <span className="font-semibold text-foreground">Title Similarity (30%)</span>
+                    <p>Compares the listing title against the brand name using TF-IDF cosine similarity. If a listing says "Comfrt Hoodie" in the title, it scores 85%+ automatically.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: "Comfrt Blanket Hoodie Oversized" = 85%, "Oversized Sherpa Hoodie" = 12%</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Brand Match (20%)</span>
+                    <p>Fuzzy matching on brand name. Catches misspellings like "Comfrit" or similar names like "Comfy" (67% match).</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: "Comfrt" in title = 100%, "Comfy" = 67%, "Nike" = 0%</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Image Similarity (15%)</span>
+                    <p>Perceptual hashing (pHash + dHash) compares the listing image against all 8 reference product photos. Returns the best match.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: Same product photo resized = 95%, similar hoodie = 72%, unrelated item = 30%</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Price Anomaly (15%)</span>
+                    <p>Counterfeits are usually much cheaper than retail. A listing at 75% below the authentic price scores very high.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: $10 vs $49 retail = 95% (suspicious), $45 = 60% (similar price), $120 = 10% (too expensive)</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">CLIP Embedding (10%)</span>
+                    <p>AI vision model (ViT-B-32) compares images semantically. Same product from different angles still scores high, unlike pixel-based hashing.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: Same hoodie different angle = 78%, different hoodie brand = 55%, shoes = 20%</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">LLM Assessment (10%)</span>
+                    <p>Gemini 2.0 Flash reads both listings and judges infringement probability. Catches copied marketing copy and brand name swaps.</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">Example: Copied product description = 90%, generic listing = 30%</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <FilterBar
               filters={filters}
