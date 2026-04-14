@@ -52,15 +52,6 @@ export function ResultCard({ result, expanded, onToggle }: Props) {
           {scorePct != null && <span className={`text-[10px] ${scoreColor}`}>%</span>}
         </div>
 
-        {/* Image */}
-        <div className="w-12 h-12 rounded-lg bg-secondary/50 border border-border/20 overflow-hidden shrink-0 flex items-center justify-center">
-          {r.image_url ? (
-            <img src={r.image_url} alt="" className="w-full h-full object-contain" loading="lazy" />
-          ) : (
-            <span className="text-[10px] text-muted-foreground">No img</span>
-          )}
-        </div>
-
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -86,6 +77,15 @@ export function ResultCard({ result, expanded, onToggle }: Props) {
             {r.prime && <span className="font-semibold">Prime</span>}
             {r.shipping && <span>{r.shipping}</span>}
           </div>
+        </div>
+
+        {/* Image on right */}
+        <div className="w-12 h-12 rounded-lg bg-secondary/50 border border-border/20 overflow-hidden shrink-0 flex items-center justify-center">
+          {r.image_url ? (
+            <img src={r.image_url} alt="" className="w-full h-full object-contain" loading="lazy" />
+          ) : (
+            <span className="text-[10px] text-muted-foreground">No img</span>
+          )}
         </div>
 
         <span className="text-xs text-muted-foreground shrink-0">

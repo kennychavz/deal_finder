@@ -216,7 +216,7 @@ function App() {
       return true
     })
     .sort((a, b) => {
-      const dir = sort.dir === 'asc' ? 1 : -1
+      const dir = sort.dir === 'desc' ? 1 : -1
       switch (sort.field) {
         case 'score': return dir * ((b.similarity_score ?? 0) - (a.similarity_score ?? 0))
         case 'price': return dir * ((a.price ?? 0) - (b.price ?? 0))
@@ -237,9 +237,12 @@ function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-3 h-3 rounded-full bg-primary" style={{ boxShadow: '0 0 8px hsl(217 91% 60%)' }} />
-        <h1 className="text-lg font-bold tracking-tight">Comfrt Infringement Detector</h1>
+      <div className="flex flex-col gap-0.5 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-primary" style={{ boxShadow: '0 0 8px hsl(217 91% 60%)' }} />
+          <h1 className="text-xl font-bold tracking-tight">discomfrt</h1>
+        </div>
+        <p className="text-xs text-muted-foreground ml-6">Comfrt Infringement Detector</p>
       </div>
 
       {/* ─── Scan Node ─── */}
@@ -315,6 +318,9 @@ function App() {
                 <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
               )}
             </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Searching for matching products on Amazon and eBay using multiple query variations. Results are deduplicated by product ID.
+            </p>
 
             <SearchLane marketplace="amazon" results={amazonResults} status={phase === 'searching' ? 'searching' : 'done'} />
             <SearchLane marketplace="ebay" results={ebayResults} status={phase === 'searching' ? 'searching' : 'done'} />
@@ -323,8 +329,6 @@ function App() {
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60 pt-1 border-t border-border/10">
                 <span className="font-mono">{Math.round(stats.elapsed_seconds)}s</span>
                 <span className="font-mono">{stats.total_requests} requests</span>
-                <span className="font-mono">{amazonResults.length} Amazon</span>
-                <span className="font-mono">{ebayResults.length} eBay</span>
               </div>
             )}
           </div>
@@ -351,6 +355,19 @@ function App() {
                   {scoredResults.length} results
                 </span>
               )}
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Each candidate is scored against 8 authentic Comfrt products using 6 independent signals. Higher score = more likely infringement.
+            </p>
+
+            {/* Signal legend */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground/70 pb-1 border-b border-border/10">
+              <span><span className="font-semibold text-muted-foreground">Title</span> TF-IDF + brand name match</span>
+              <span><span className="font-semibold text-muted-foreground">Brand</span> Fuzzy Levenshtein</span>
+              <span><span className="font-semibold text-muted-foreground">Image</span> Perceptual hash (pHash/dHash)</span>
+              <span><span className="font-semibold text-muted-foreground">Price</span> Suspiciously cheap detection</span>
+              <span><span className="font-semibold text-muted-foreground">CLIP</span> Vision embedding similarity</span>
+              <span><span className="font-semibold text-muted-foreground">LLM</span> Gemini 2.0 Flash assessment</span>
             </div>
 
             <FilterBar

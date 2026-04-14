@@ -4,6 +4,25 @@
 
 Right now this is a single-tenant app. One FastAPI server, one React frontend, one user clicking "Start Scan." It works well for demonstrating the pipeline, but if we needed to run this for hundreds of clients simultaneously, basically everything about the job lifecycle would need to change. The scoring signals and scraping logic stay the same. It is the orchestration around them that needs to scale.
 
+## Scoring Signals
+
+Each candidate listing is scored against 8 authentic Comfrt product images using 6 independent signals. The final score is a weighted average, and the top 3 contributing reasons are surfaced to the user.
+
+| Signal | Weight | What it does | Why this approach |
+|---|---|---|---|
+| **Title Similarity** | 0.30 | TF-IDF cosine + Jaccard on tokenized titles. If the brand name "Comfrt" appears in the candidate title, it floors at 0.85 | Highest weight because a listing using the exact brand name is the strongest infringement signal. TF-IDF handles partial matches well |
+| **Brand Match** | 0.20 | Fuzzy Levenshtein distance matching against the brand name in title and seller fields | Catches misspellings like "Comfrt" vs "Comfrit" or "Comfort" that exact matching would miss |
+| **Image Similarity** | 0.15 | Perceptual hashing (pHash + dHash) against all 8 reference images, returns best match | Fast and robust to resizing/compression. We compare against all reference images, not just one, so a candidate matching any Comfrt product scores high |
+| **Price Anomaly** | 0.15 | Scores based on price ratio vs authentic product. Very cheap items (over 50% below retail) score high | Counterfeits are typically priced well below retail. This is deliberately biased toward recall |
+| **CLIP Embedding** | 0.10 | ViT-B-32 vision embeddings, cosine similarity against all 8 reference images | Captures semantic similarity that perceptual hashing misses. Same product from a different angle still scores high. Lower weight because it is slower and requires a GPU-sized model |
+| **LLM Assessment** | 0.10 | Gemini 2.0 Flash evaluates source vs candidate as a structured JSON assessment | Catches nuance the rule-based signals miss (copied marketing copy, brand name swaps). Low weight because it depends on an external API that rate-limits |
+
+### What we did not do and why
+
+- **OCR/Logo detection**: Would add significant latency (need to download full-res images, run OCR pipeline) for marginal accuracy gain. The brand name in title + image hash signals already catch most logo-based infringement
+- **Full image embedding comparison** (comparing every candidate against every reference image with CLIP): We do compare against all 8, but we use the max score rather than averaging. Averaging would dilute the signal when only one reference product matches
+- **Next.js server actions**: The scoring pipeline requires Python ML libraries (CLIP/PyTorch, imagehash/PIL, numpy) that have no Node.js equivalents. A Next.js app would need to call out to a Python microservice anyway, adding complexity without benefit
+
 ## Job Orchestration
 
 The first thing I would do is pull the search pipeline out of the HTTP request handler and into a proper job queue. Right now the entire scrape-to-score pipeline lives inside a single SSE stream. That is fine for a demo, but it means if the connection drops, the job is gone.
